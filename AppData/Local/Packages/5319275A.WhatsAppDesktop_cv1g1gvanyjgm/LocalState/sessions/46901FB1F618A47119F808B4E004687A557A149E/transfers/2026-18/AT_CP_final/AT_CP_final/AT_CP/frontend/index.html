@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DFA Simulator & Animator - Complete Web Application</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header Section -->
+        <header>
+            <h1>🎯 DFA Simulator & Animator</h1>
+            <p>Interactive Deterministic Finite Automaton - Construction, Validation & Visualization</p>
+        </header>
+
+        <!-- Mode Selection -->
+        <div class="mode-selector panel">
+            <h2>📋 Select Mode</h2>
+            <div class="mode-buttons">
+                <button class="btn btn-primary mode-btn active" data-mode="custom">Custom DFA</button>
+                <button class="btn btn-purple mode-btn" data-mode="starts">Starts With</button>
+                <button class="btn btn-purple mode-btn" data-mode="ends">Ends With</button>
+                <button class="btn btn-purple mode-btn" data-mode="substring">Contains Substring</button>
+            </div>
+            <div id="pattern-input-section" class="hidden">
+                <div class="form-group">
+                    <label>Pattern:</label>
+                    <input type="text" id="pattern-input" placeholder="e.g., ab, 001, xyz">
+                </div>
+                <div id="dead-state-info" class="info-box" style="display: none; margin-bottom: 15px; padding: 10px; background: #fef2f2; border-left: 4px solid #ef4444; border-radius: 5px;">
+                    <strong>ℹ️ Dead State Information:</strong><br>
+                    <span style="font-size: 0.9em; color: #6b7280;">
+                        For "Starts With" patterns, a <strong style="color: #ef4444;">Dead State (q_reject)</strong> is automatically created.
+                        Any string that doesn't start with the correct pattern will transition to this dead state and be rejected.
+                        Once in the dead state, all transitions loop back to it (trap state behavior).
+                    </span>
+                </div>
+                <button class="btn btn-success" onclick="handlePatternGeneration()">Generate DFA</button>
+            </div>
+        </div>
+
+        <!-- Main Layout: 3 Columns -->
+        <div class="main-layout">
+            <!-- Left Panel: Input Controls -->
+            <div class="panel input-panel">
+                <h2>⚙️ DFA Input</h2>
+                
+                <!-- Number of States -->
+                <div class="form-group">
+                    <label>Number of States:</label>
+                    <input type="number" id="num-states" min="1" max="20" value="3" placeholder="Enter number">
+                    <button class="btn btn-success" onclick="generateStates()">Generate States</button>
+                </div>
+
+                <!-- Alphabet Input -->
+                <div class="form-group">
+                    <label>Alphabet (Σ) - comma separated:</label>
+                    <input type="text" id="alphabet-input" value="a,b" placeholder="e.g., 0,1 or a,b,c">
+                    <button class="btn btn-primary" onclick="updateAlphabet()">Update Alphabet</button>
+                </div>
+
+                <!-- State Names (editable) -->
+                <div class="form-group">
+                    <label>State Names (editable):</label>
+                    <div id="state-names-container" class="state-names-list"></div>
+                </div>
+
+                <!-- Initial State -->
+                <div class="form-group">
+                    <label>Initial State (q0):</label>
+                    <select id="initial-state-select"></select>
+                </div>
+
+                <!-- Final States -->
+                <div class="form-group">
+                    <label>Final States (F):</label>
+                    <div id="final-states-container" class="checkbox-list"></div>
+                </div>
+
+                <!-- Transition Table -->
+                <div class="form-group">
+                    <label>Transition Function (δ):</label>
+                    <div id="transition-table-container" class="transition-table-wrapper"></div>
+                </div>
+
+                <!-- Validate Button -->
+                <button class="btn btn-warning" onclick="validateCurrentDFA()">✓ Validate DFA</button>
+
+                <!-- Input String for Simulation -->
+                <div class="input-string-section">
+                    <h3>🔤 Test Input String</h3>
+                    <div class="form-group">
+                        <label>Input String:</label>
+                        <input type="text" id="input-string" placeholder="e.g., abab, 0011">
+                    </div>
+                    <div class="btn-group">
+                        <button class="btn btn-primary" onclick="startSimulation()">▶️ Start Simulation</button>
+                        <button class="btn btn-danger" onclick="resetSimulation()">🔄 Reset</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Center Panel: Visualization -->
+            <div class="panel visualization-panel">
+                <h2>🎨 DFA Visualization</h2>
+                
+                <!-- SVG Canvas for DFA Graph -->
+                <div class="canvas-container">
+                    <svg id="dfa-svg" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <!-- Arrow markers for transitions -->
+                            <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                                <polygon points="0 0, 10 3, 0 6" fill="#8b5cf6" />
+                            </marker>
+                            <marker id="arrowhead-active" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                                <polygon points="0 0, 10 3, 0 6" fill="#f59e0b" />
+                            </marker>
+                            <marker id="arrowhead-start" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                                <polygon points="0 0, 10 3, 0 6" fill="#10b981" />
+                            </marker>
+                            <!-- Glow filter for active states -->
+                            <filter id="glow">
+                                <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                                <feMerge>
+                                    <feMergeNode in="coloredBlur"/>
+                                    <feMergeNode in="SourceGraphic"/>
+                                </feMerge>
+                            </filter>
+                        </defs>
+                        <g id="svg-content"></g>
+                    </svg>
+                </div>
+
+                <!-- DFA Tuple Display -->
+                <div class="tuple-display">
+                    <h3>DFA 5-Tuple: M = (Q, Σ, δ, q0, F)</h3>
+                    <div id="dfa-tuple-content" class="tuple-content">
+                        <p>Enter states and alphabet to see the DFA tuple</p>
+                    </div>
+                </div>
+
+                <!-- Transition Path Display -->
+                <div class="path-display" id="path-display" style="display: none;">
+                    <h3>Transition Path</h3>
+                    <div id="path-content" class="path-content"></div>
+                </div>
+            </div>
+
+            <!-- Right Panel: Animation Controls -->
+            <div class="panel controls-panel">
+                <h2>🎬 Animation Controls</h2>
+                
+                <button class="btn btn-success" id="btn-play" onclick="playAnimation()" disabled>▶️ Play</button>
+                <button class="btn btn-warning" id="btn-pause" onclick="pauseAnimation()" disabled>⏸️ Pause</button>
+                <button class="btn btn-primary" id="btn-step" onclick="stepAnimation()" disabled>⏭️ Step</button>
+                <button class="btn btn-danger" id="btn-reset" onclick="resetAnimation()" disabled>🔄 Reset</button>
+
+                <!-- Speed Control -->
+                <div class="speed-control">
+                    <label>Animation Speed: <span id="speed-value">1.0x</span></label>
+                    <input type="range" id="speed-slider" min="0.5" max="5" step="0.5" value="1" oninput="updateSpeed()">
+                    <div class="speed-labels">
+                        <span>Slow</span>
+                        <span>Fast</span>
+                    </div>
+                </div>
+
+                <!-- Current State Display -->
+                <div class="live-display">
+                    <div class="label">Current State</div>
+                    <div id="current-state-display" class="value">-</div>
+                </div>
+
+                <!-- Progress Display -->
+                <div class="live-display">
+                    <div class="label">Progress</div>
+                    <div id="progress-display" class="value">0 / 0</div>
+                </div>
+
+                <!-- Result Display -->
+                <div id="result-display" class="result-display"></div>
+
+                <!-- Keyboard Shortcuts -->
+                <div class="shortcuts-box">
+                    <h4>⌨️ Keyboard Shortcuts</h4>
+                    <div>
+                        <strong>Space</strong> - Play/Pause<br>
+                        <strong>→</strong> - Step Forward<br>
+                        <strong>R</strong> - Reset<br>
+                        <strong>S</strong> - Start Simulation
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom: Transition Table -->
+        <div class="transition-table-container panel">
+            <h2>📊 Complete Transition Table</h2>
+            <div id="full-transition-table"></div>
+        </div>
+    </div>
+
+    <!-- JavaScript Files (in order of dependency) -->
+    <script src="graph.js"></script>
+    <script src="animation.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
